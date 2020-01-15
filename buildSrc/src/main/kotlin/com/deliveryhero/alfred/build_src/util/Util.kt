@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.slf4j.LoggerFactory
+import java.util.concurrent.TimeUnit
 
 /**
  *
@@ -32,6 +33,8 @@ object Util {
 
         val error = process.errorStream.bufferedReader().use { it.readText() }.trim()
         val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+
+        process.waitFor(10, TimeUnit.SECONDS)
 
         if (process.exitValue() != 0) {
             throw Exception("Error when executing command \"$commands\". Error: $error")
