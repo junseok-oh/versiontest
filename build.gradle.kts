@@ -177,7 +177,7 @@ tasks.register("myRelease") {
 
         val currentBranch = executeExternalCommand("git", "rev-parse", "--abbrev-ref", "HEAD")
 
-        val currentVersion = Properties.modules.root.version!!
+        val currentVersion = Properties.get("version")!!
 
         val regex = "([0-9]+)\\.([0-9]+)\\.([0-9]+)-?(.*)".toRegex()
         val matchResult = regex.find(currentVersion)
