@@ -218,7 +218,7 @@ tasks.register("myRelease") {
         executeExternalCommand("git", "merge", "$currentBranch")
 
         // Tagging and pushing to origin
-        executeExternalCommand("git", "tag", "-a", "-m", "$tagName", "$newReleaseVersion release.")
+        executeExternalCommand("git", "tag", "-a", "$tagName", "-m", "$newReleaseVersion release.")
         executeExternalCommand("git", "push", "$remote", "$tagName")
         executeExternalCommand("git", "push", "$remote", "$masterBranch")
 
