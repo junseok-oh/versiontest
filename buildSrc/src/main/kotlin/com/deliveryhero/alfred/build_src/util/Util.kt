@@ -37,7 +37,7 @@ object Util {
         process.waitFor(10, TimeUnit.SECONDS)
 
         if (process.exitValue() != 0) {
-            throw Exception("Error when executing command \"$commands\". Error: $error")
+            throw Exception("Error when executing command \"${commands.joinToString(" ")}\". Error: $error")
         }
 
         return output
