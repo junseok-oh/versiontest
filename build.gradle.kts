@@ -209,24 +209,24 @@ tasks.register<Exec>("myRelease") {
     executeExternalCommand("./gradlew publish")
 
     // Commiting the new version
-    commandLine("git add ${gradlePropertiesFile.absolutePath}")
-    commandLine("git commit -m \"Releasing $newReleaseVersion. Previous version was $currentVersion.\"")
+    executeExternalCommand("git add ${gradlePropertiesFile.absolutePath}")
+    executeExternalCommand("git commit -m \"Releasing $newReleaseVersion. Previous version was $currentVersion.\"")
 
     // Merging with the master branch
-    commandLine("git checkout $masterBranch")
-    commandLine("git merge $currentBranch")
+    executeExternalCommand("git checkout $masterBranch")
+    executeExternalCommand("git merge $currentBranch")
 
     // Tagging and pushing to origin
-    commandLine("git tag -a -m $tagName \"$newReleaseVersion release.\"")
-    commandLine("git push $remote $tagName")
-    commandLine("git push $remote $masterBranch")
+    executeExternalCommand("git tag -a -m $tagName \"$newReleaseVersion release.\"")
+    executeExternalCommand("git push $remote $tagName")
+    executeExternalCommand("git push $remote $masterBranch")
 
     // Releasing a new version to GitHub
-    commandLine("hub release create -m \"$newReleaseVersion release.\" $tagName")
+    executeExternalCommand("hub release create -m \"$newReleaseVersion release.\" $tagName")
 
     // Returning to the previous branch and merging master branch
-    commandLine("git checkout $currentBranch")
-    commandLine("git merge $masterBranch")
+    executeExternalCommand("git checkout $currentBranch")
+    executeExternalCommand("git merge $masterBranch")
 
     // Iterating to the new snapshot version
     gradlePropertiesFile.writeText(
@@ -237,7 +237,7 @@ tasks.register<Exec>("myRelease") {
                 "version=$newSnapshotVersion"
             )
     )
-    commandLine("git add ${gradlePropertiesFile.absolutePath}")
-    commandLine("git commit -m \"Iterating to the $newSnapshotVersion version.\"")
-    commandLine("git push $remote $currentBranch")
+    executeExternalCommand("git add ${gradlePropertiesFile.absolutePath}")
+    executeExternalCommand("git commit -m \"Iterating to the $newSnapshotVersion version.\"")
+    executeExternalCommand("git push $remote $currentBranch")
 }
