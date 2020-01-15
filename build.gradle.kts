@@ -1,4 +1,5 @@
 import com.deliveryhero.alfred.build_src.util.Properties
+import com.deliveryhero.alfred.build_src.util.Util.executeExternalCommand
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.bundling.BootJar
@@ -167,14 +168,13 @@ publishing {
     }
 }
 
-tasks.register<Exec>("release") {
+tasks.register<Exec>("myRelease") {
     val gradlePropertiesFile = Paths.get(Properties.modules.root.path!!.absolutePath, "gradle.properties").toFile()
     val remote = "origin"
     val masterBranch = "master"
     val snapshotSuffix = "-SNAPSHOT"
 
-    val currentBranch = commandLine("git branch | grep -E '^\\* ' | sed 's/^\\* //g'")
-
+    val currentBranch = executeExternalCommand("git rev-parse --abbrev-ref HEAD")
 
     val currentVersion = Properties.modules.root.version!!
 
@@ -196,10 +196,17 @@ tasks.register<Exec>("release") {
     val tagName = newReleaseVersion
 
     // Iterating to the release version
-    gradlePropertiesFile.readText().replace("version=$currentVersion", "version=$newReleaseVersion")
+    gradlePropertiesFile.writeText(
+        gradlePropertiesFile
+            .readText()
+            .replace(
+                "version=$currentVersion",
+                "version=$newReleaseVersion"
+            )
+    )
 
     // Publishing to Artifactory
-    tasks.publish.invoke {}
+    executeExternalCommand("./gradlew clean")
 
     // Commiting the new version
     commandLine("git add ${gradlePropertiesFile.absolutePath}")
@@ -222,7 +229,14 @@ tasks.register<Exec>("release") {
     commandLine("git merge $masterBranch")
 
     // Iterating to the new snapshot version
-    gradlePropertiesFile.readText().replace("version=$newReleaseVersion", "version=$newSnapshotVersion")
+    gradlePropertiesFile.writeText(
+        gradlePropertiesFile
+            .readText()
+            .replace(
+                "version=$newReleaseVersion",
+                "version=$newSnapshotVersion"
+            )
+    )
     commandLine("git add ${gradlePropertiesFile.absolutePath}")
     commandLine("git commit -m \"Iterating to the $newSnapshotVersion version.\"")
     commandLine("git push $remote $currentBranch")
