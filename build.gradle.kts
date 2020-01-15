@@ -223,7 +223,7 @@ tasks.register("myRelease") {
         executeExternalCommand("git", "push", "$remote", "$masterBranch")
 
         // Releasing a new version to GitHub
-        executeExternalCommand("hub", "release", "create", "-m", "$newReleaseVersion release.", "$tagName")
+//        executeExternalCommand("hub", "release", "create", "-m", "$newReleaseVersion release.", "$tagName")
 
         // Returning to the previous branch and merging master branch
         executeExternalCommand("git", "checkout", "$currentBranch")
