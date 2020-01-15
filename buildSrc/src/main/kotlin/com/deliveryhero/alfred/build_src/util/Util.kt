@@ -31,11 +31,13 @@ object Util {
         val process = Runtime.getRuntime().exec(commands)
 
         val error = process.errorStream.bufferedReader().use { it.readText() }.trim()
+        val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
 
-        if (error.isNotBlank())
+        if (process.exitValue() != 0) {
             throw Exception("Error when executing command \"$commands\". Error: $error")
+        }
 
-        return process.inputStream.bufferedReader().use { it.readText() }.trim()
+        return output
     }
 
     /**
