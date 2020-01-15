@@ -206,7 +206,7 @@ tasks.register<Exec>("myRelease") {
     )
 
     // Publishing to Artifactory
-    executeExternalCommand("./gradlew clean")
+    executeExternalCommand("./gradlew publish")
 
     // Commiting the new version
     commandLine("git add ${gradlePropertiesFile.absolutePath}")
