@@ -168,76 +168,78 @@ publishing {
     }
 }
 
-tasks.register<Exec>("myRelease") {
-    val gradlePropertiesFile = Paths.get(Properties.modules.root.path!!.absolutePath, "gradle.properties").toFile()
-    val remote = "origin"
-    val masterBranch = "master"
-    val snapshotSuffix = "-SNAPSHOT"
+tasks.register("myRelease") {
+    doLast {
+        val gradlePropertiesFile = Paths.get(Properties.modules.root.path!!.absolutePath, "gradle.properties").toFile()
+        val remote = "origin"
+        val masterBranch = "master"
+        val snapshotSuffix = "-SNAPSHOT"
 
-    val currentBranch = executeExternalCommand("git rev-parse --abbrev-ref HEAD")
+        val currentBranch = executeExternalCommand("git", "rev-parse", "--abbrev-ref", "HEAD")
 
-    val currentVersion = Properties.modules.root.version!!
+        val currentVersion = Properties.modules.root.version!!
 
-    val regex = "([0-9]+)\\.([0-9]+)\\.([0-9]+)-?(.*)".toRegex()
-    val matchResult = regex.find(currentVersion)
+        val regex = "([0-9]+)\\.([0-9]+)\\.([0-9]+)-?(.*)".toRegex()
+        val matchResult = regex.find(currentVersion)
 
-    val (major, minor, patch, suffix) = matchResult!!.destructured
+        val (major, minor, patch, suffix) = matchResult!!.destructured
 
-    if (suffix.isEmpty())
-        throw Exception(
-            """
-            |Not possible to release because the current version ($currentVersion) is a release version.
-            |Hint: try to append a SNAPSHOT suffix to your version.
-            """.trimMargin()
+        if (suffix.isEmpty())
+            throw Exception(
+                """
+                |Not possible to release because the current version ($currentVersion) is a release version.
+                |Hint: try to append a SNAPSHOT suffix to your version.
+                """.trimMargin()
+            )
+
+        val newReleaseVersion = "$major.$minor.$patch"
+        val newSnapshotVersion = "$major.$minor.${patch.toInt().plus(1)}$snapshotSuffix"
+        val tagName = newReleaseVersion
+
+        // Iterating to the release version
+        gradlePropertiesFile.writeText(
+            gradlePropertiesFile
+                .readText()
+                .replace(
+                    "version=$currentVersion",
+                    "version=$newReleaseVersion"
+                )
         )
 
-    val newReleaseVersion = "$major.$minor.$patch"
-    val newSnapshotVersion = "$major.$minor.${patch.toInt().plus(1)}$snapshotSuffix"
-    val tagName = newReleaseVersion
+        // Publishing to Artifactory
+//        executeExternalCommand("./gradlew publish")
 
-    // Iterating to the release version
-    gradlePropertiesFile.writeText(
-        gradlePropertiesFile
-            .readText()
-            .replace(
-                "version=$currentVersion",
-                "version=$newReleaseVersion"
-            )
-    )
+        // Commiting the new version
+        executeExternalCommand("git", "add", "${gradlePropertiesFile.absolutePath}")
+        executeExternalCommand("git", "commit", "-m", "Releasing $newReleaseVersion. Previous version was $currentVersion.")
 
-    // Publishing to Artifactory
-    executeExternalCommand("./gradlew publish")
+        // Merging with the master branch
+        executeExternalCommand("git", "checkout", "$masterBranch")
+        executeExternalCommand("git", "merge", "$currentBranch")
 
-    // Commiting the new version
-    executeExternalCommand("git add ${gradlePropertiesFile.absolutePath}")
-    executeExternalCommand("git commit -m \"Releasing $newReleaseVersion. Previous version was $currentVersion.\"")
+        // Tagging and pushing to origin
+        executeExternalCommand("git", "tag", "-a", "-m", "$tagName", "$newReleaseVersion release.")
+        executeExternalCommand("git", "push", "$remote", "$tagName")
+        executeExternalCommand("git", "push", "$remote", "$masterBranch")
 
-    // Merging with the master branch
-    executeExternalCommand("git checkout $masterBranch")
-    executeExternalCommand("git merge $currentBranch")
+        // Releasing a new version to GitHub
+        executeExternalCommand("hub", "release", "create", "-m", "$newReleaseVersion release.", "$tagName")
 
-    // Tagging and pushing to origin
-    executeExternalCommand("git tag -a -m $tagName \"$newReleaseVersion release.\"")
-    executeExternalCommand("git push $remote $tagName")
-    executeExternalCommand("git push $remote $masterBranch")
+        // Returning to the previous branch and merging master branch
+        executeExternalCommand("git", "checkout", "$currentBranch")
+        executeExternalCommand("git", "merge", "$masterBranch")
 
-    // Releasing a new version to GitHub
-    executeExternalCommand("hub release create -m \"$newReleaseVersion release.\" $tagName")
-
-    // Returning to the previous branch and merging master branch
-    executeExternalCommand("git checkout $currentBranch")
-    executeExternalCommand("git merge $masterBranch")
-
-    // Iterating to the new snapshot version
-    gradlePropertiesFile.writeText(
-        gradlePropertiesFile
-            .readText()
-            .replace(
-                "version=$newReleaseVersion",
-                "version=$newSnapshotVersion"
-            )
-    )
-    executeExternalCommand("git add ${gradlePropertiesFile.absolutePath}")
-    executeExternalCommand("git commit -m \"Iterating to the $newSnapshotVersion version.\"")
-    executeExternalCommand("git push $remote $currentBranch")
+        // Iterating to the new snapshot version
+        gradlePropertiesFile.writeText(
+            gradlePropertiesFile
+                .readText()
+                .replace(
+                    "version=$newReleaseVersion",
+                    "version=$newSnapshotVersion"
+                )
+        )
+        executeExternalCommand("git", "add", "${gradlePropertiesFile.absolutePath}")
+        executeExternalCommand("git", "commit", "-m", "Iterating to the $newSnapshotVersion version.")
+        executeExternalCommand("git", "push", "$remote", "$currentBranch")
+    }
 }

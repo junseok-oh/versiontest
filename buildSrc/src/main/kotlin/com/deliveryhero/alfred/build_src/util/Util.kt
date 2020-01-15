@@ -27,8 +27,15 @@ object Util {
     /**
      *
      */
-    fun executeExternalCommand(command: String): String {
-        return Runtime.getRuntime().exec(command).inputStream.bufferedReader().use { it.readText() }.trim()
+    fun executeExternalCommand(vararg commands: String): String {
+        val process = Runtime.getRuntime().exec(commands)
+
+        val error = process.errorStream.bufferedReader().use { it.readText() }.trim()
+
+        if (error.isNotBlank())
+            throw Exception("Error when executing command \"$commands\". Error: $error")
+
+        return process.inputStream.bufferedReader().use { it.readText() }.trim()
     }
 
     /**
