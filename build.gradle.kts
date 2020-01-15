@@ -1,4 +1,5 @@
 import com.deliveryhero.alfred.build_src.util.Properties
+import com.deliveryhero.alfred.build_src.util.Util.executeExternalCommand
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.bundling.BootJar
@@ -167,14 +168,13 @@ publishing {
     }
 }
 
-tasks.register<Exec>("release") {
+tasks.register<Exec>("myRelease") {
     val gradlePropertiesFile = Paths.get(Properties.modules.root.path!!.absolutePath, "gradle.properties").toFile()
     val remote = "origin"
     val masterBranch = "master"
     val snapshotSuffix = "-SNAPSHOT"
 
-    val currentBranch = commandLine("git branch | grep -E '^\\* ' | sed 's/^\\* //g'")
-
+    val currentBranch = executeExternalCommand("git rev-parse --abbrev-ref HEAD")
 
     val currentVersion = Properties.modules.root.version!!
 
@@ -196,34 +196,48 @@ tasks.register<Exec>("release") {
     val tagName = newReleaseVersion
 
     // Iterating to the release version
-    gradlePropertiesFile.readText().replace("version=$currentVersion", "version=$newReleaseVersion")
+    gradlePropertiesFile.writeText(
+        gradlePropertiesFile
+            .readText()
+            .replace(
+                "version=$currentVersion",
+                "version=$newReleaseVersion"
+            )
+    )
 
     // Publishing to Artifactory
-    tasks.publish.invoke {}
+    executeExternalCommand("./gradlew publish")
 
     // Commiting the new version
-    commandLine("git add ${gradlePropertiesFile.absolutePath}")
-    commandLine("git commit -m \"Releasing $newReleaseVersion. Previous version was $currentVersion.\"")
+    executeExternalCommand("git add ${gradlePropertiesFile.absolutePath}")
+    executeExternalCommand("git commit -m \"Releasing $newReleaseVersion. Previous version was $currentVersion.\"")
 
     // Merging with the master branch
-    commandLine("git checkout $masterBranch")
-    commandLine("git merge $currentBranch")
+    executeExternalCommand("git checkout $masterBranch")
+    executeExternalCommand("git merge $currentBranch")
 
     // Tagging and pushing to origin
-    commandLine("git tag -a -m $tagName \"$newReleaseVersion release.\"")
-    commandLine("git push $remote $tagName")
-    commandLine("git push $remote $masterBranch")
+    executeExternalCommand("git tag -a -m $tagName \"$newReleaseVersion release.\"")
+    executeExternalCommand("git push $remote $tagName")
+    executeExternalCommand("git push $remote $masterBranch")
 
     // Releasing a new version to GitHub
-    commandLine("hub release create -m \"$newReleaseVersion release.\" $tagName")
+    executeExternalCommand("hub release create -m \"$newReleaseVersion release.\" $tagName")
 
     // Returning to the previous branch and merging master branch
-    commandLine("git checkout $currentBranch")
-    commandLine("git merge $masterBranch")
+    executeExternalCommand("git checkout $currentBranch")
+    executeExternalCommand("git merge $masterBranch")
 
     // Iterating to the new snapshot version
-    gradlePropertiesFile.readText().replace("version=$newReleaseVersion", "version=$newSnapshotVersion")
-    commandLine("git add ${gradlePropertiesFile.absolutePath}")
-    commandLine("git commit -m \"Iterating to the $newSnapshotVersion version.\"")
-    commandLine("git push $remote $currentBranch")
+    gradlePropertiesFile.writeText(
+        gradlePropertiesFile
+            .readText()
+            .replace(
+                "version=$newReleaseVersion",
+                "version=$newSnapshotVersion"
+            )
+    )
+    executeExternalCommand("git add ${gradlePropertiesFile.absolutePath}")
+    executeExternalCommand("git commit -m \"Iterating to the $newSnapshotVersion version.\"")
+    executeExternalCommand("git push $remote $currentBranch")
 }
